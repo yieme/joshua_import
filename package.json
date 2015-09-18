@@ -1,0 +1,26 @@
+{
+  "name": "joshua_import",
+  "version": "1.0.0",
+  "description": "Import Joshua Project data to Sparse JSON",
+  "main": "index.js",
+  "scripts": {
+    "test": "exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://yieme@github.com/yieme/joshua_import.git"
+  },
+  "engines": {
+    "node":">=0.10.39"
+  },
+  "private": true,
+  "author": "yieme",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yieme/joshua_import/issues"
+  },
+  "homepage": "https://github.com/yieme/joshua_import",
+  "dependencies": {
+    "request-json": "^0.5.3"
+  }
+}
