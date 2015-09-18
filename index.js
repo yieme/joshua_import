@@ -1,15 +1,17 @@
-var request = require('request-json');
-var client  = request.createClient('http://joshuaproject.net/');
-var fs      = require('fs');
-var API_KEY = process.env.API_KEY;
-var limit   = process.env.LIMIT || 1000;
-limit = (limit > 999) ? 1000 : limit;
-limit = (limit < 1) ? 1 : limit;
-var uri     = '/api/v2/people_groups?api_key=' + API_KEY + '&limit=' + limit + '&page=';
-var path    = process.env.DATA || 'data/';
-var individual = process.env.INDIVIDUAL || false;
-var data    = [];
+var request      = require('request-json');
+var client       = request.createClient('http://joshuaproject.net/');
+var fs           = require('fs');
+var API_KEY      = process.env.API_KEY    || false;
+var limit        = process.env.LIMIT      || 1000;
+var path         = process.env.DATA       || 'data/';
+var individual   = process.env.INDIVIDUAL || false;
+var minimized    = process.env.MINIMIZED  || false;
+var both         = process.env.BOTH       || false;
+var peopleData   = [];
 var usablePhotos = [];
+var uri          = '/api/v2/people_groups?api_key=' + API_KEY + '&limit=' + limit + '&page=';
+limit            = (limit > 999) ? 1000 : limit;
+limit            = (limit < 1)   ? 1    : limit;
 var booleans = { // fields that contain boolean data in the form of 'Y' = true, 'N' or '' = false
 	'10_40Window': 1,
 	'LeastReached': 1,
@@ -30,6 +32,8 @@ try {
 	fs.mkdirSync(path);
 } catch(e) {}
 
+if (!API_KEY) throw new Error('Missing API_KEY');
+
 // sparse data, drop falsy data fields
 // Y/N/blank to boolean
 function sparseData(obj) {
@@ -46,12 +50,22 @@ function sparseData(obj) {
 	return result;
 }
 
+function writeData(file, obj) {
+	if (minimized || both) {
+		fs.writeFile(path + file + '.min.json', JSON.stringify(obj), 'utf8');
+	}
+	if (!minimized || both) {
+		fs.writeFile(path + file + '.json', JSON.stringify(obj, null, 2), 'utf8');
+	}
+}
+
 function processPeople(people) {
+	if (!people) return;
 	peopleGroupCount++;
 	people = sparseData(people);
-	data.push(people);
+	peopleData.push(people);
 	if (individual) {
-		fs.writeFile(path + peopleGroupCount + '.json', JSON.stringify(people, null, 2), 'utf8');
+		writeData(peopleGroupCount, people);
 	}
 	var isPhoto = people.Photo;
 	if (isPhoto && people.PhotoGood && !people.PhotoCopyright) {
@@ -68,15 +82,16 @@ function getPage(page) {
 		for (var i=0; i < peoples.length; i++) {
 			processPeople(peoples[i]);
 		}
+		if (!body.meta.pagination || body.status.status_code == 403) {
+			throw new Error('Invalid API_KEY');
+		}
 		var pages = body.meta.pagination.total_pages;
-		console.log(page, 'of', pages, '-', usablePhotos.length, 'photos');
+		console.log(page + ' of ' + pages + ' - ' +  usablePhotos.length + ' photos');
 		if (page < pages) {
 			getPage(page+1);
 		} else {
-			fs.writeFile(path + 'data.json', JSON.stringify(data, null, 2), 'utf8');
-			fs.writeFile(path + 'data.min.json', JSON.stringify(data), 'utf8');
-			fs.writeFile(path + 'photos.json', JSON.stringify(usablePhotos, null, 2), 'utf8');
-			fs.writeFile(path + 'photos.min.json', JSON.stringify(usablePhotos), 'utf8');
+			writeData('data',   peopleData);
+			writeData('photos', usablePhotos);
 		}
 	});
 }

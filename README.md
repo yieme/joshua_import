@@ -12,6 +12,8 @@ Where:
 - `DATA` path to where JSON data is stored, default: `data/`
 - `LIMIT` is the number of rows to fetch from the Joshua Project API each pass, 1-1000, default: `1000`
 - `INDIVIDUAL` if defined, outputs individual JSON files for each people group row returned, default: `false`
+- `MINIMIZED` if defined, outputs `.min.json` files, otherwise outputs pretty `.json` files
+- `BOTH` if defined, outputs both `.min.json` and `.json` files
 
 ## License
 MIT
