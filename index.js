@@ -50,8 +50,9 @@ function processPeople(people) {
 	peopleGroupCount++;
 	people = sparseData(people);
 	data.push(people);
-	fs.writeFile(path + peopleGroupCount + '.json', JSON.stringify(people, null, 2), 'utf8');
-
+	if (individual) {
+		fs.writeFile(path + peopleGroupCount + '.json', JSON.stringify(people, null, 2), 'utf8');
+	}
 	var isPhoto = people.Photo;
 	if (isPhoto && people.PhotoGood && !people.PhotoCopyright) {
 		if (usablePhotos.indexOf(people.PhotoAddress) < 0) {
