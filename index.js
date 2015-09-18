@@ -2,7 +2,10 @@ var request = require('request-json');
 var client  = request.createClient('http://joshuaproject.net/');
 var fs      = require('fs');
 var API_KEY = process.env.API_KEY;
-var uri     = '/api/v2/people_groups?api_key=' + API_KEY + '&limit=1&page=';
+var limit   = process.env.LIMIT || 1000;
+limit = (limit > 999) ? 1000 : limit;
+limit = (limit < 1) ? 1 : limit;
+var uri     = '/api/v2/people_groups?api_key=' + API_KEY + '&limit=' + limit + '&page=';
 var path    = __dirname + '/data/';
 var data    = [];
 var usablePhotos = [];
@@ -21,7 +24,10 @@ var booleans = {
 	'NTOnline':1,
 	'GospelRadio':1,
 };
+var peopleGroupCount = 0;
 
+// sparse data, drop falsy data fields
+// Y/N/blank to boolean
 function sparseData(obj) {
 	var result = {};
 	for (var key in obj) {
@@ -36,24 +42,36 @@ function sparseData(obj) {
 	return result;
 }
 
+function processPeople(people) {
+	peopleGroupCount++;
+	people = sparseData(people);
+	data.push(people);
+	fs.writeFile(path + peopleGroupCount + '.json', JSON.stringify(people, null, 2), 'utf8');
+
+	var isPhoto = people.Photo;
+	if (isPhoto && people.PhotoGood && !people.PhotoCopyright) {
+		if (usablePhotos.indexOf(people.PhotoAddress) < 0) {
+			usablePhotos.push(people.PhotoAddress);
+		}
+	}
+}
+
 function getPage(page) {
 	client.get(uri + page, function(err, res, body) {
 		if (err) throw err;
-		var people = sparseData(body.data[0]);
-		data.push(people);
-		var isPhoto = people.Photo;
-		fs.writeFile(path + page + '.json', JSON.stringify(people, null, 2), 'utf8');
-		if (isPhoto && people.PhotoGood && !people.PhotoCopyright) {
-			usablePhotos.push(people.PhotoAddress);
-			console.log(page, 'photo');
-		} else {
-			console.log(page);
+		var peoples = body.data;
+		for (var i=0; i < peoples.length; i++) {
+			processPeople(peoples[i]);
 		}
-		if (page < body.meta.pagination.total_count) {
+		var pages = body.meta.pagination.total_pages;
+		console.log(page, 'of', pages, '-', usablePhotos.length, 'photos');
+		if (page < pages) {
 			getPage(page+1);
 		} else {
 			fs.writeFile(path + '_all.json', JSON.stringify(data, null, 2), 'utf8');
 			fs.writeFile(path + '_photos.json', JSON.stringify(usablePhotos, null, 2), 'utf8');
+			fs.writeFile(path + '_all.min.json', JSON.stringify(data), 'utf8');
+			fs.writeFile(path + '_photos.min.json', JSON.stringify(usablePhotos), 'utf8');
 		}
 	});
 }
